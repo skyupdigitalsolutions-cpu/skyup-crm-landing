@@ -33,49 +33,54 @@ export default function LeadModal({ open, onClose, source = 'popup' }) {
     setStep(2)
   }
 
- const submit = async () => {
-  if (!form.business) return setErr('Please select your business type')
-  setErr('')
-  setStatus('sending')
+  const submit = async () => {
+    if (!form.business) return setErr('Please select your business type')
+    setErr('')
+    setStatus('sending')
 
-  const cleanPhone = normalizePhone(form.phone)
-  const payload = {
-    name: form.name.trim(),
-    phone: cleanPhone,
-    business_type: form.business,
-    city: form.city.trim(),
-    source,
-    page: 'skyup-crm-landing',
-    ts: new Date().toISOString(),
+    const cleanPhone = normalizePhone(form.phone)
+    const payload = {
+      name: form.name.trim(),
+      phone: cleanPhone,
+      business_type: form.business,
+      city: form.city.trim(),
+      source,
+      page: 'skyup-crm-landing',
+      ts: new Date().toISOString(),
+    }
+
+    const pushDataLayer = () => {
+      window.dataLayer = window.dataLayer || []
+      window.dataLayer.push({
+        event:         'crm_lead',
+        form_name:     payload.name,
+        form_mobile:   payload.phone,
+        form_business: payload.business_type,
+        form_city:     payload.city,
+        form_source:   'SkyupCRM',
+      })
+    }
+
+    try {
+      await fetch(CONFIG.FORM_ENDPOINT, {
+        method: 'POST',
+        headers: { 'Content-Type': 'text/plain;charset=utf-8' },
+        body: JSON.stringify(payload),
+      })
+      track('Lead', { content_name: 'SkyUp CRM Demo', source })
+      pushDataLayer()
+      setStatus('done')
+    } catch (e) {
+      track('Lead', { content_name: 'SkyUp CRM Demo', source })
+      pushDataLayer()
+      setStatus('done')
+    }
   }
 
-  const pushDataLayer = () => {
-    window.dataLayer = window.dataLayer || []
-    window.dataLayer.push({
-      event:         'crm_lead',
-      form_name:     payload.name,
-      form_mobile:   payload.phone,
-      form_business: payload.business_type,
-      form_city:     payload.city,
-      form_source:   'SkyupCRM',
-    })
+  const reset = () => {
+    onClose()
+    setTimeout(() => { setStep(1); setStatus('idle'); setErr('') }, 300)
   }
-
-  try {
-    await fetch(CONFIG.FORM_ENDPOINT, {
-      method: 'POST',
-      headers: { 'Content-Type': 'text/plain;charset=utf-8' },
-      body: JSON.stringify(payload),
-    })
-    track('Lead', { content_name: 'SkyUp CRM Demo', source })
-    pushDataLayer()
-    setStatus('done')
-  } catch (e) {
-    track('Lead', { content_name: 'SkyUp CRM Demo', source })
-    pushDataLayer()
-    setStatus('done')
-  }
-}
 
   return (
     <div className="modal-overlay" onClick={reset} role="dialog" aria-modal="true">
