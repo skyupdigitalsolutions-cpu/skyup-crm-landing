@@ -3,10 +3,12 @@
 // ============================================================
 
 export const CONFIG = {
-  // Where the lead form POSTs (JSON body).
-  // Paste the Web App URL from deploying apps-script/Code.gs against:
-  // https://docs.google.com/spreadsheets/d/1-ZigHe9r1DV_OfHWRSK2w1Pv2ddYAQkq3vViB1wWiDI/edit?usp=sharing
-  FORM_ENDPOINT: 'YOUR_APPS_SCRIPT_WEB_APP_URL',
+  // Lead form → SKYUP CRM website webhook. Both come from env (.env locally +
+  // Cloudflare Pages env), so they survive design edits and stay out of source:
+  //   VITE_FORM_ENDPOINT  = <your CRM backend root>/website-webhook
+  //   VITE_WEBHOOK_SECRET = the secret set in CRM → Campaigns → Website integration
+  FORM_ENDPOINT: import.meta.env.VITE_FORM_ENDPOINT || '',
+  WEBHOOK_SECRET: import.meta.env.VITE_WEBHOOK_SECRET || '',
 
   // WhatsApp click-to-chat (country code, no +). Used by "Talk on WhatsApp" links.
   WHATSAPP_NUMBER: '918867867775',
@@ -18,6 +20,12 @@ export const CONFIG = {
 
   // Fires fbq('track', 'Lead') on successful form submit, 'Contact' on WhatsApp click.
   // Pixel ID itself lives in index.html (2 places).
+}
+
+// Loud warning if the CRM webhook wiring is incomplete — the #1 reason website
+// leads silently fail to reach the CRM after a deploy.
+if (!CONFIG.FORM_ENDPOINT || !CONFIG.WEBHOOK_SECRET) {
+  console.warn('[SKYUP] Lead webhook not configured — set VITE_FORM_ENDPOINT (…/website-webhook) and VITE_WEBHOOK_SECRET (.env + Cloudflare Pages env), then rebuild. Leads will NOT reach the CRM until then.')
 }
 
 // Safe pixel helper — never crashes if fbq is blocked / not loaded

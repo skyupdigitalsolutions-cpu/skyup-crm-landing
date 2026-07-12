@@ -37,24 +37,26 @@ export default function LeadModal({ open, onClose, source = 'popup', onSubmitted
     if (!form.business) return setErr('Please select your business type')
     setErr('')
     setStatus('sending')
+    // Matches the SKYUP CRM /website-webhook contract: { webhook_secret, name, mobile, email, message }.
+    // Business type + city are folded into `message` so they land in the lead's remark.
+    const details = [`Business: ${form.business}`, form.city.trim() && `City: ${form.city.trim()}`]
+      .filter(Boolean)
+      .join(', ')
     const payload = {
+      webhook_secret: CONFIG.WEBHOOK_SECRET,
       name: form.name.trim(),
-      phone: normalizePhone(form.phone),
-      business_type: form.business,
-      city: form.city.trim(),
-      source,
-      page: 'skyup-crm-landing',
-      ts: new Date().toISOString(),
+      mobile: normalizePhone(form.phone),
+      email: '',
+      message: `[${source}] ${details}`,
     }
     try {
-      // text/plain avoids a CORS preflight (OPTIONS), which Apps Script Web Apps don't handle
       await fetch(CONFIG.FORM_ENDPOINT, {
         method: 'POST',
-        headers: { 'Content-Type': 'text/plain;charset=utf-8' },
+        headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(payload),
       })
     } catch (e) {
-      // Endpoint might be no-cors Apps Script — still count as submitted
+      // Webhook returns 200 immediately and processes async — still count as submitted
     }
     track('Lead', { content_name: 'SKYUP CRM Demo', source })
     setStatus('done')
