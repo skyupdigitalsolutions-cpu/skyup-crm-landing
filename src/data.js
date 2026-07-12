@@ -119,7 +119,7 @@ export const IMPACT_STATS = [
 
 export const TESTIMONIALS = [
   {
-    quote: 'Earlier we were losing leads because follow-ups were missed. With SkyUp CRM, every enquiry is tracked and our team is accountable.',
+    quote: 'Earlier we were losing leads because follow-ups were missed. With SKYUP CRM, every enquiry is tracked and our team is accountable.',
     name: 'Business Owner',
     role: 'Real Estate, Bengaluru',
   },
@@ -143,12 +143,12 @@ export const WHY_CHOOSE = [
 ]
 
 export const FAQS = [
-  { q: 'Can SkyUp CRM capture leads from Meta Ads and Google Ads?', a: 'Yes. SkyUp CRM connects directly to Meta lead forms and Google Ads lead forms via webhooks, so every enquiry lands in the CRM within seconds — no manual downloading of CSVs.' },
+  { q: 'Can SKYUP CRM capture leads from Meta Ads and Google Ads?', a: 'Yes. SKYUP CRM connects directly to Meta lead forms and Google Ads lead forms via webhooks, so every enquiry lands in the CRM within seconds — no manual downloading of CSVs.' },
   { q: 'Can leads be assigned automatically?', a: 'Yes. Set assignment rules by source, location, or round-robin, and every new lead reaches the right salesperson instantly with a notification.' },
   { q: 'Does it support WhatsApp communication?', a: 'Yes. Send approved WhatsApp template messages, confirmations, and follow-ups from inside the CRM, with the complete conversation history saved on the lead.' },
   { q: 'Can managers track sales team performance?', a: 'Yes. Managers see response times, follow-ups completed, call recordings, field visits, and conversions per salesperson in real time.' },
   { q: 'Can we migrate existing Excel / customer data?', a: 'Yes. Our onboarding team imports your existing Excel sheets and customer lists with phone-number cleanup and duplicate detection included.' },
-  { q: 'Is it useful for real estate, education, services, and field sales teams?', a: 'Yes. SkyUp CRM is built for enquiry-driven Indian businesses — real estate, education, healthcare, services, and any team that runs on calls, WhatsApp, and field visits.' },
+  { q: 'Is it useful for real estate, education, services, and field sales teams?', a: 'Yes. SKYUP CRM is built for enquiry-driven Indian businesses — real estate, education, healthcare, services, and any team that runs on calls, WhatsApp, and field visits.' },
   { q: 'How long does implementation take?', a: 'Most businesses are live within 2–5 working days, including lead source connections, WhatsApp templates, and team onboarding.' },
-  { q: 'Does SkyUp CRM have AI call summaries?', a: 'Yes. Every recorded call gets an AI-generated summary so managers know what was discussed without listening to full recordings.' },
+  { q: 'Does SKYUP CRM have AI call summaries?', a: 'Yes. Every recorded call gets an AI-generated summary so managers know what was discussed without listening to full recordings.' },
 ]

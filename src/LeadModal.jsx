@@ -53,11 +53,11 @@ export default function LeadModal({ open, onClose, source = 'popup' }) {
         headers: { 'Content-Type': 'text/plain;charset=utf-8' },
         body: JSON.stringify(payload),
       })
-      track('Lead', { content_name: 'SkyUp CRM Demo', source })
+      track('Lead', { content_name: 'SKYUP CRM Demo', source })
       setStatus('done')
     } catch (e) {
       // Endpoint might be no-cors Apps Script — still count as submitted
-      track('Lead', { content_name: 'SkyUp CRM Demo', source })
+      track('Lead', { content_name: 'SKYUP CRM Demo', source })
       setStatus('done')
     }
   }
@@ -76,7 +76,7 @@ export default function LeadModal({ open, onClose, source = 'popup' }) {
           <div className="modal-done">
             <div className="modal-done-icon">✅</div>
             <h3>Demo Request Received!</h3>
-            <p>Our team will call you shortly to schedule your free SkyUp CRM demo.</p>
+            <p>Our team will call you shortly to schedule your free SKYUP CRM demo.</p>
             <button className="btn btn-orange" onClick={reset}>Done</button>
           </div>
         ) : (
@@ -90,7 +90,7 @@ export default function LeadModal({ open, onClose, source = 'popup' }) {
             </h3>
             <p className="modal-sub">
               {step === 1
-                ? 'See how SkyUp CRM captures and converts every lead.'
+                ? 'See how SKYUP CRM captures and converts every lead.'
                 : 'This helps us prepare a demo relevant to you.'}
             </p>
 
@@ -115,7 +115,7 @@ export default function LeadModal({ open, onClose, source = 'popup' }) {
                 <button className="modal-back" onClick={() => setStep(1)}>← Back</button>
               </div>
             )}
-            <p className="modal-privacy">No obligation. Your details stay with SkyUp Digital Solutions.</p>
+            <p className="modal-privacy">No obligation. Your details stay with SKYUP Digital Solutions.</p>
           </>
         )}
       </div>

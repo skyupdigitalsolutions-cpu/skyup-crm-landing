@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from 'react'
+import { useEffect, useRef, useState, useId } from 'react'
 import LeadModal from './LeadModal'
 import { CONFIG, track, waLink } from './config'
 import {
@@ -13,6 +13,9 @@ const WHATSAPP_GLYPH_PATH = 'M380.9 97.1C339 55.1 283.2 32 223.9 32c-122.4 0-222
 
 // real WhatsApp brand mark — used wherever data.js has the placeholder '💬' icon
 function WhatsAppIcon({ size = 24, tile = false }) {
+  // Unique gradient id per instance — sharing one id across multiple inline
+  // SVGs breaks the fill in most browsers, which made the icon render washed-out.
+  const gradId = `wa-grad-${useId().replace(/:/g, '')}`
   if (!tile) {
     return (
       <svg width={size} height={size} viewBox="0 0 448 512" xmlns="http://www.w3.org/2000/svg">
@@ -22,13 +25,13 @@ function WhatsAppIcon({ size = 24, tile = false }) {
   }
   return (
     <svg width={size} height={size} viewBox="0 0 32 32" xmlns="http://www.w3.org/2000/svg">
-      <rect width="32" height="32" rx="9" fill="url(#wa-tile-grad)" />
       <defs>
-        <linearGradient id="wa-tile-grad" x1="0" y1="0" x2="32" y2="32" gradientUnits="userSpaceOnUse">
+        <linearGradient id={gradId} x1="0" y1="0" x2="32" y2="32" gradientUnits="userSpaceOnUse">
           <stop stopColor="#25D366" />
           <stop offset="1" stopColor="#128C46" />
         </linearGradient>
       </defs>
+      <circle cx="16" cy="16" r="16" fill={`url(#${gradId})`} />
       <g transform="translate(5.5,4) scale(0.046875)">
         <path d={WHATSAPP_GLYPH_PATH} fill="#fff" />
       </g>
@@ -39,6 +42,38 @@ function WhatsAppIcon({ size = 24, tile = false }) {
 function renderIcon(icon, opts) {
   if (icon === '💬') return <WhatsAppIcon {...opts} />
   return icon
+}
+
+// Flat illustrated headshots for the testimonial cards (anonymous personas,
+// so illustrated avatars rather than real photos). Two distinct looks.
+const AVATAR_SCHEMES = [
+  { bg1: '#ffe8d6', bg2: '#fdd9c0', skin: '#e8b48c', hair: '#3b2a1e', shirt: '#26324d',
+    hairPath: 'M31 45 C31 30 39 24 48 24 C57 24 65 30 65 45 C65 37 60 34 48 34 C36 34 31 37 31 45 Z' },
+  { bg1: '#d8ede4', bg2: '#cfe3f5', skin: '#d9a97e', hair: '#1e1712', shirt: '#1f7a5a',
+    hairPath: 'M30 47 C30 29 39 23 48 23 C57 23 66 29 66 47 C66 38 62 35 60 40 C58 33 52 32 48 32 C44 32 38 33 36 40 C34 35 30 38 30 47 Z' },
+]
+
+function PersonAvatar({ scheme, size = 52 }) {
+  const uid = useId().replace(/:/g, '')
+  const bgId = `avbg-${uid}`, clipId = `avc-${uid}`
+  return (
+    <svg width={size} height={size} viewBox="0 0 96 96" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
+      <defs>
+        <linearGradient id={bgId} x1="0" y1="0" x2="96" y2="96" gradientUnits="userSpaceOnUse">
+          <stop stopColor={scheme.bg1} />
+          <stop offset="1" stopColor={scheme.bg2} />
+        </linearGradient>
+        <clipPath id={clipId}><circle cx="48" cy="48" r="48" /></clipPath>
+      </defs>
+      <g clipPath={`url(#${clipId})`}>
+        <rect width="96" height="96" fill={`url(#${bgId})`} />
+        <path d="M14 96 C14 73 30 65 48 65 C66 65 82 73 82 96 Z" fill={scheme.shirt} />
+        <path d="M40 60 h16 v6 q-8 5 -16 0 Z" fill={scheme.skin} />
+        <circle cx="48" cy="43" r="17" fill={scheme.skin} />
+        <path d={scheme.hairPath} fill={scheme.hair} />
+      </g>
+    </svg>
+  )
 }
 
 /* ---------- hooks ---------- */
@@ -255,7 +290,12 @@ export default function App() {
   const [faqOpen, setFaqOpen] = useState(0)
   const [faqExpanded, setFaqExpanded] = useState(false)
   const [stickyVisible, setStickyVisible] = useState(false)
-  const [heroCatOpen, setHeroCatOpen] = useState(-1)
+  const [atFinalCta, setAtFinalCta] = useState(false)
+  const finalCtaRef = useRef(null)
+  const [openCats, setOpenCats] = useState(() => new Set())
+  const heroCatsRef = useRef(null)
+  const [navOpen, setNavOpen] = useState(false)
+  const navRef = useRef(null)
 
   const openModal = (source) => {
     track('InitiateCheckout', { content_name: 'Demo CTA', source })
@@ -275,6 +315,76 @@ export default function App() {
     const onScroll = () => setStickyVisible(window.scrollY > 600)
     window.addEventListener('scroll', onScroll, { passive: true })
     return () => window.removeEventListener('scroll', onScroll)
+  }, [])
+
+  // When the final CTA section (which already has both buttons) comes into view,
+  // retract the sticky bottom bar and the floating WhatsApp button.
+  useEffect(() => {
+    const el = finalCtaRef.current
+    if (!el) return
+    const io = new IntersectionObserver(
+      ([entry]) => setAtFinalCta(entry.isIntersecting),
+      { rootMargin: '0px 0px -35% 0px', threshold: 0 }
+    )
+    io.observe(el)
+    return () => io.disconnect()
+  }, [])
+
+  // Close the mobile menu when tapping outside it, scrolling, or pressing Escape.
+  useEffect(() => {
+    if (!navOpen) return
+    const close = () => setNavOpen(false)
+    const onDocClick = (e) => { if (navRef.current && !navRef.current.contains(e.target)) close() }
+    const onKey = (e) => { if (e.key === 'Escape') close() }
+    document.addEventListener('click', onDocClick)
+    document.addEventListener('keydown', onKey)
+    window.addEventListener('scroll', close, { passive: true })
+    return () => {
+      document.removeEventListener('click', onDocClick)
+      document.removeEventListener('keydown', onKey)
+      window.removeEventListener('scroll', close)
+    }
+  }, [navOpen])
+
+  // Mobile/tablet only (≤980px): auto-open each hero category as it crosses
+  // the vertical middle of the screen, so users see every category while
+  // scrolling — no tap needed. Desktop is untouched (hover + click).
+  useEffect(() => {
+    const mq = window.matchMedia('(max-width: 980px)')
+    let io = null
+
+    const attach = () => {
+      if (io) { io.disconnect(); io = null }
+      // Desktop: no scroll auto-open — clear anything the observer opened.
+      if (!mq.matches) { setOpenCats(new Set()); return }
+      const container = heroCatsRef.current
+      if (!container) return
+      const cards = Array.from(container.querySelectorAll('.hero-cat'))
+      io = new IntersectionObserver(
+        (entries) => {
+          setOpenCats((prev) => {
+            const next = new Set(prev)
+            entries.forEach((en) => {
+              const idx = cards.indexOf(en.target)
+              if (idx === -1) return
+              if (en.isIntersecting) next.add(idx)
+              else next.delete(idx)
+            })
+            return next
+          })
+        },
+        // A zero-height band at 50% viewport height = the screen's middle line.
+        { rootMargin: '-50% 0px -50% 0px', threshold: 0 }
+      )
+      cards.forEach((c) => io.observe(c))
+    }
+
+    attach()
+    mq.addEventListener('change', attach) // re-wire on rotate / resize across the breakpoint
+    return () => {
+      if (io) io.disconnect()
+      mq.removeEventListener('change', attach)
+    }
   }, [])
 
   const activeTab = TOUR_TABS.find((t) => t.id === tab)
@@ -299,32 +409,40 @@ export default function App() {
     return () => clearInterval(id)
   }, [])
 
-  // keep the active tab centered in the (mobile) scrollable strip without ever moving the page itself
+  // keep the active tab aligned to the left edge of the (mobile) scrollable strip
   useEffect(() => {
     const container = tourTabsRef.current
     const btn = tourTabRefs.current[tab]
     if (!container || !btn) return
     const reduceMotion = window.matchMedia('(prefers-reduced-motion: reduce)').matches
-    const target = btn.offsetLeft - (container.clientWidth - btn.clientWidth) / 2
+    const target = Math.max(0, btn.offsetLeft - 20)
     container.scrollTo({ left: target, behavior: reduceMotion ? 'auto' : 'smooth' })
   }, [tab])
 
   return (
     <>
       {/* ============ NAV ============ */}
-      <nav className="nav">
+      <nav className="nav" ref={navRef}>
         <div className="container nav-in">
           <div className="brand">
-            <img src="/screenshots/logo.png" alt="SkyUp Digital Solutions" className="brand-logo" />
+            <img src="/screenshots/logo.png" alt="SKYUP Digital Solutions" className="brand-logo" />
             <span className="brand-crm">CRM</span>
           </div>
-          <div className="nav-links">
-            <a href="#features">Features</a>
-            <a href="#tour">Product Tour</a>
-            <a href="#why">Why Us</a>
-            <a href="#faq">FAQ</a>
+          <div className={`nav-links ${navOpen ? 'open' : ''}`}>
+            <a href="#features" onClick={() => setNavOpen(false)}>Features</a>
+            <a href="#tour" onClick={() => setNavOpen(false)}>Product Tour</a>
+            <a href="#why" onClick={() => setNavOpen(false)}>Why Us</a>
+            <a href="#faq" onClick={() => setNavOpen(false)}>FAQ</a>
           </div>
-          <button className="btn btn-orange btn-sm" onClick={() => openModal('nav')}>Book Free CRM Demo</button>
+          <button className="btn btn-orange btn-sm nav-cta" onClick={() => openModal('nav')}>Book Free CRM Demo</button>
+          <button
+            className="nav-toggle"
+            aria-label="Menu"
+            aria-expanded={navOpen}
+            onClick={() => setNavOpen((o) => !o)}
+          >
+            <span /><span /><span />
+          </button>
         </div>
       </nav>
 
@@ -339,17 +457,21 @@ export default function App() {
               </h1>
               <p className="reveal" style={{ transitionDelay: '0.16s' }}>
                 Every missed follow-up, delayed response, and untracked enquiry costs your
-                business money. SkyUp CRM captures every lead, assigns it instantly, tracks
+                business money. SKYUP CRM captures every lead, assigns it instantly, tracks
                 every activity, and helps your team convert more customers.
               </p>
-              <div className="hero-categories reveal" style={{ transitionDelay: '0.24s' }}>
+              <div className="hero-categories reveal" ref={heroCatsRef} style={{ transitionDelay: '0.24s' }}>
                 {HERO_CATEGORIES.map((c, i) => (
                   <div
                     key={c.title}
-                    className={`hero-cat hero-cat-${c.color} ${heroCatOpen === i ? 'open' : ''}`}
-                    onMouseEnter={() => setHeroCatOpen(i)}
-                    onMouseLeave={() => setHeroCatOpen((cur) => (cur === i ? -1 : cur))}
-                    onClick={() => setHeroCatOpen((cur) => (cur === i ? -1 : i))}
+                    className={`hero-cat hero-cat-${c.color} ${openCats.has(i) ? 'open' : ''}`}
+                    onClick={() =>
+                      setOpenCats((prev) => {
+                        const next = new Set(prev)
+                        next.has(i) ? next.delete(i) : next.add(i)
+                        return next
+                      })
+                    }
                   >
                     <span className="hero-cat-num">{i + 1}</span>
                     <div className="hero-cat-top">
@@ -464,7 +586,7 @@ export default function App() {
             })}
           </div>
           <div className="center reveal">
-            <a href="#tour" className="btn btn-blue">See SkyUp CRM in Action →</a>
+            <a href="#tour" className="btn btn-blue">See SKYUP CRM in Action →</a>
           </div>
         </div>
       </section>
@@ -483,11 +605,11 @@ export default function App() {
               }}
             >
               <div className="vs-text">
-                <div className="vs-head">Before <b>SkyUp CRM</b></div>
+                <div className="vs-head">Before <b>SKYUP CRM</b></div>
                 {BEFORE_POINTS.map((p) => <div key={p} className="vs-point bad">✕ {p}</div>)}
               </div>
               <div className="vs-photo-wrap">
-                <img className="vs-photo" src="/images/before-crm.png" alt="Overwhelmed salesperson before SkyUp CRM" />
+                <img className="vs-photo" src="/images/before-crm.png" alt="Overwhelmed salesperson before SKYUP CRM" />
               </div>
             </div>
             <div className="vs-badge">VS</div>
@@ -500,11 +622,11 @@ export default function App() {
               }}
             >
               <div className="vs-text">
-                <div className="vs-head">After <b>SkyUp CRM</b></div>
+                <div className="vs-head">After <b>SKYUP CRM</b></div>
                 {AFTER_POINTS.map((p) => <div key={p} className="vs-point good">✓ {p}</div>)}
               </div>
               <div className="vs-photo-wrap">
-                <img className="vs-photo" src="/images/after-crm.png" alt="Confident salesperson after SkyUp CRM" />
+                <img className="vs-photo" src="/images/after-crm.png" alt="Confident salesperson after SKYUP CRM" />
               </div>
             </div>
           </div>
@@ -515,9 +637,9 @@ export default function App() {
       <section className="section section-navy" id="tour">
         <div className="container">
           <SectionTag>PRODUCT TOUR</SectionTag>
-          <h2 className="reveal on-dark">See SkyUp CRM in Action</h2>
+          <h2 className="reveal on-dark">See SKYUP CRM in Action</h2>
           <p className="section-sub on-dark reveal">
-            Discover how SkyUp CRM helps businesses capture leads, automate follow-ups and
+            Discover how SKYUP CRM helps businesses capture leads, automate follow-ups and
             manage their entire sales process from one dashboard.
           </p>
           <div
@@ -541,7 +663,7 @@ export default function App() {
             <img
               key={activeTab.id}
               src={activeTab.img}
-              alt={`SkyUp CRM — ${activeTab.label}`}
+              alt={`SKYUP CRM — ${activeTab.label}`}
               onError={(e) => { e.currentTarget.style.display = 'none'; e.currentTarget.nextSibling.style.display = 'flex' }}
             />
             <div className="tour-placeholder" style={{ display: 'none' }}>
@@ -610,7 +732,7 @@ export default function App() {
             ))}
           </div>
           <div className="testimonials">
-            {TESTIMONIALS.map((t) => (
+            {TESTIMONIALS.map((t, i) => (
               <div
                 key={t.quote}
                 className="testimonial reveal"
@@ -623,7 +745,10 @@ export default function App() {
                 <div className="quote-mark">"</div>
                 <p>{t.quote}</p>
                 <div className="stars">★★★★★</div>
-                <div className="testi-who">— {t.name}<small>{t.role}</small></div>
+                <div className="testi-who">
+                  <span className="testi-avatar"><PersonAvatar scheme={AVATAR_SCHEMES[i % AVATAR_SCHEMES.length]} /></span>
+                  <span className="testi-meta">— {t.name}<small>{t.role}</small></span>
+                </div>
               </div>
             ))}
           </div>
@@ -633,9 +758,9 @@ export default function App() {
       {/* ============ 8. WHY CHOOSE ============ */}
       <section className="section section-white" id="why">
         <div className="container">
-          <h2 className="reveal">Why Businesses Choose SkyUp CRM</h2>
+          <h2 className="reveal">Why Businesses Choose SKYUP CRM</h2>
           <div className="why-grid reveal">
-            {WHY_CHOOSE.map((w, i) => (
+            {[...WHY_CHOOSE].sort((a, b) => b.length - a.length).map((w, i) => (
               <div key={w} className="why-chip reveal" style={{ transitionDelay: `${i * 0.05}s`, '--wave-delay': `${i * 0.25}s` }}>
                 ✓ {w}
               </div>
@@ -671,7 +796,7 @@ export default function App() {
       </section>
 
       {/* ============ 10. FINAL CTA ============ */}
-      <section className="final-cta">
+      <section className="final-cta" ref={finalCtaRef}>
         <div className="container center">
           <h2 className="on-dark reveal">Stop Losing Customers You Already Paid to Acquire.</h2>
           <p className="on-dark reveal">
@@ -692,7 +817,7 @@ export default function App() {
               💬 Talk on WhatsApp
             </a>
           </div>
-          <p className="final-note">No obligation. Speak with our team and see how SkyUp CRM fits your sales process.</p>
+          <p className="final-note">No obligation. Speak with our team and see how SKYUP CRM fits your sales process.</p>
         </div>
       </section>
 
@@ -700,28 +825,32 @@ export default function App() {
       <footer className="footer">
         <div className="container footer-in">
           <div className="brand on-dark">
-            <img src="/screenshots/logo.png" alt="SkyUp Digital Solutions" className="brand-logo" />
+            <img src="/screenshots/logo.png" alt="SKYUP Digital Solutions" className="brand-logo" />
             <span className="brand-crm">CRM</span>
           </div>
-          <p>SkyUp CRM — a product of {CONFIG.COMPANY}, {CONFIG.CITY}.</p>
+          <p>SKYUP CRM — a product of {CONFIG.COMPANY}, {CONFIG.CITY}.</p>
           <p>© {new Date().getFullYear()} {CONFIG.COMPANY}. All rights reserved.</p>
         </div>
       </footer>
 
       {/* ============ MOBILE STICKY CTA ============ */}
-      <div className={`sticky-cta ${stickyVisible ? 'show' : ''}`}>
+      <div className={`sticky-cta ${stickyVisible && !atFinalCta ? 'show' : ''}`}>
         <button className="btn btn-orange btn-full" onClick={() => openModal('sticky-mobile')}>
           Book Free CRM Demo →
         </button>
       </div>
 
-      {/* ============ FLOATING CALENDAR CTA ============ */}
-      <button className="fab-calendar" onClick={() => openModal('fab-calendar')} aria-label="Book Free CRM Demo">
-        <span className="fab-cal">
-          <span className="fab-cal-head" />
-          <span className="fab-cal-day">{new Date().getDate()}</span>
-        </span>
-      </button>
+      {/* ============ FLOATING WHATSAPP CTA ============ */}
+      <a
+        className={`fab-whatsapp ${atFinalCta ? 'fab-hidden' : ''}`}
+        href={waLink()}
+        target="_blank"
+        rel="noreferrer"
+        onClick={() => track('Contact', { source: 'fab-whatsapp' })}
+        aria-label="Talk on WhatsApp"
+      >
+        <WhatsAppIcon size={30} />
+      </a>
 
       <LeadModal open={modal.open} source={modal.source} onClose={() => setModal({ ...modal, open: false })} />
     </>

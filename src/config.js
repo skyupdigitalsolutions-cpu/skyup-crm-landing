@@ -13,7 +13,7 @@ export const CONFIG = {
   WHATSAPP_PREFILL: 'Hello, can I get more info on your CRM services?',
 
   // Shown in footer / contact
-  COMPANY: 'Skyup Digital Solutions LLP',
+  COMPANY: 'SKYUP Digital Solutions LLP',
   CITY: 'Bengaluru',
 
   // Fires fbq('track', 'Lead') on successful form submit, 'Contact' on WhatsApp click.
