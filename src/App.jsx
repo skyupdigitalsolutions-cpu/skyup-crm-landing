@@ -282,6 +282,12 @@ function DashboardMock() {
 
 export default function App() {
   const [modal, setModal] = useState({ open: false, source: 'cta' })
+  const modalOpenRef = useRef(false)
+  const convertedRef = useRef(null)
+  if (convertedRef.current === null) {
+    try { convertedRef.current = localStorage.getItem('skyup_lead_done') === '1' } catch { convertedRef.current = false }
+  }
+  const autoFired = useRef(new Set())
   const [tab, setTab] = useState(TOUR_TABS[0].id)
   const lastTourInteraction = useRef(0)
   const tourManualStop = useRef(false)
@@ -300,12 +306,51 @@ export default function App() {
   const openModal = (source) => {
     track('InitiateCheckout', { content_name: 'Demo CTA', source })
     setModal({ open: true, source })
+    modalOpenRef.current = true
   }
 
+  const markConverted = () => {
+    convertedRef.current = true
+    try { localStorage.setItem('skyup_lead_done', '1') } catch {}
+  }
+
+  // Opens the demo form once per trigger key. Never stacks on an already-open
+  // modal (anti-overlap), and never fires once the user has submitted.
+  const autoPopup = (source, key) => {
+    if (autoFired.current.has(key)) return
+    autoFired.current.add(key)
+    if (convertedRef.current || modalOpenRef.current) return
+    setModal({ open: true, source })
+    modalOpenRef.current = true
+  }
+
+  useEffect(() => { modalOpenRef.current = modal.open }, [modal.open])
+
+  // Auto-popup: scroll depth (25/50/75/100%) + time on page (25/60/95/120s),
+  // running together — autoPopup() handles overlap and the submitted-once rule.
+  useEffect(() => {
+    const marks = [[25, 's25'], [50, 's50'], [75, 's75'], [100, 's100']]
+    const onScroll = () => {
+      const max = document.documentElement.scrollHeight - window.innerHeight
+      const pct = max <= 0 ? 100 : (window.scrollY / max) * 100
+      for (const [t, key] of marks) if (pct >= t) autoPopup(`auto-scroll-${t}`, key)
+    }
+    window.addEventListener('scroll', onScroll, { passive: true })
+    const timers = [25, 60, 95, 120].map((s) =>
+      setTimeout(() => autoPopup(`auto-time-${s}s`, `t${s}`), s * 1000)
+    )
+    return () => {
+      window.removeEventListener('scroll', onScroll)
+      timers.forEach(clearTimeout)
+    }
+  }, [])
+
   useExitIntent(() => {
+    if (convertedRef.current) return
     if (!modal.open && !sessionStorage.getItem('exit_shown')) {
       sessionStorage.setItem('exit_shown', '1')
       setModal({ open: true, source: 'exit-intent' })
+      modalOpenRef.current = true
     }
   })
 
@@ -852,7 +897,7 @@ export default function App() {
         <WhatsAppIcon size={30} />
       </a>
 
-      <LeadModal open={modal.open} source={modal.source} onClose={() => setModal({ ...modal, open: false })} />
+      <LeadModal open={modal.open} source={modal.source} onSubmitted={markConverted} onClose={() => setModal({ ...modal, open: false })} />
     </>
   )
 }
